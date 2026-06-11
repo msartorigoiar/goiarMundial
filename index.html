@@ -384,6 +384,8 @@ function goTab(tab) {
     document.getElementById('nb-'+t).classList.toggle('active', t === tab);
   });
   if (tab === 'rank') buildRank();
+  if (tab === 'arg')  buildArgTab();
+  if (tab === 'all')  buildAllTab();
 }
 
 function goTriviaTab(tab) {
@@ -428,7 +430,9 @@ var DAY_OFFSETS = {
 };
 
 function getMatchDateTime(m) {
-  var offset = DAY_OFFSETS[m.d] || 0;
+  // m.d es "Sáb 27/06" — extraer solo "27/06" para matchear DAY_OFFSETS
+  var dateKey = m.d.replace(/^[A-Za-zÁÉÍÓÚáéíóúü]+\s+/, '');
+  var offset = DAY_OFFSETS[dateKey] || 0;
   var parts = m.t.split(':');
   var hh = parseInt(parts[0]);
   var mm = parseInt(parts[1]);
