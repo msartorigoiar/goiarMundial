@@ -85,6 +85,12 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 .sc{width:40px;height:36px;text-align:center;font-size:17px;font-weight:700;border:1.5px solid var(--color-border-alt);border-radius:var(--radius-sm);background:var(--color-card-bg);color:var(--color-text);outline:none;font-family:var(--font-display);transition:border-color .15s}
 .sc:focus{border-color:var(--color-primary);background:var(--color-white)}
 .sc-locked{background:#F5F2EE !important;color:#B0A9A2 !important;border-color:#E8E4DE !important;cursor:not-allowed}
+.result-real{display:flex;align-items:center;justify-content:center;min-width:28px;font-family:var(--font-display);font-size:18px;color:#1A1A1A;letter-spacing:1px}
+.pts-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:99px;font-family:var(--font-condensed);font-size:12px;font-weight:700;letter-spacing:1px;flex-shrink:0}
+.pts-badge.exact{background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7}
+.pts-badge.correct{background:#FFF8E1;color:#F57F17;border:1.5px solid #FFE082}
+.pts-badge.wrong{background:#FBE9E7;color:#BF360C;border:1.5px solid #FFAB91}
+.pts-badge.pending{background:#F5F5F5;color:#9E9E9E;border:1.5px solid #E0E0E0}
 .sc-sep{font-size:18px;color:#CCC;font-weight:300}
 /* SAVEBAR */
 .savebar{position:fixed;bottom:0;left:0;right:0;background:var(--color-white);border-top:2px solid var(--color-border);padding:13px 20px;display:flex;align-items:center;gap:12px;z-index:100;justify-content:flex-end}
@@ -256,6 +262,7 @@ var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyOicPKAHWw48HHu8Osad4
 // ============================================================
 var uName = '';
 var preds = {};
+var resultados = {}; // {partido_id: {gl, gv}}
 
 function setPred(i, f, v) {
   if (!preds['m'+i]) preds['m'+i] = {};
@@ -275,6 +282,31 @@ function saveLocal() {
     var key = 'gp26_' + uName.toLowerCase().replace(/\s+/g, '_');
     localStorage.setItem(key, JSON.stringify({n: uName, p: preds}));
   } catch(e) {}
+}
+
+function loadResultados(callback) {
+  fetch(SCRIPT_URL + '?action=resultados')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      resultados = data.resultados || {};
+      if (callback) callback();
+    })
+    .catch(function() {
+      resultados = {};
+      if (callback) callback();
+    });
+}
+
+function calcPuntos(i, ph, pa) {
+  var res = resultados[i + 1]; // partido_id es 1-indexed en la sheet
+  if (!res) return null; // sin resultado aún
+  var ph_i = parseInt(ph), pa_i = parseInt(pa);
+  if (isNaN(ph_i) || isNaN(pa_i)) return null;
+  if (ph_i === res.gl && pa_i === res.gv) return 3;
+  var predGan = ph_i > pa_i ? 1 : ph_i < pa_i ? -1 : 0;
+  var resGan  = res.gl > res.gv ? 1 : res.gl < res.gv ? -1 : 0;
+  if (predGan === resGan) return 1;
+  return 0;
 }
 
 // ============================================================
@@ -337,8 +369,11 @@ function onLoginSuccess(name) {
   document.getElementById('uLabel').textContent = uName;
   document.getElementById('nameScreen').style.display = 'none';
   document.getElementById('mainApp').classList.remove('section-hidden');
-  buildArgTab();
-  buildAllTab();
+  // Cargar resultados reales primero, luego renderizar
+  loadResultados(function() {
+    buildArgTab();
+    buildAllTab();
+  });
 }
 
 function doSignOut() {
@@ -359,8 +394,10 @@ function doSignOut() {
           document.getElementById('uLabel').textContent = uName;
           document.getElementById('nameScreen').style.display = 'none';
           document.getElementById('mainApp').classList.remove('section-hidden');
-          buildArgTab();
-          buildAllTab();
+          loadResultados(function() {
+            buildArgTab();
+            buildAllTab();
+          });
           break;
         }
       } catch(e) {}
@@ -384,8 +421,8 @@ function goTab(tab) {
     document.getElementById('nb-'+t).classList.toggle('active', t === tab);
   });
   if (tab === 'rank') buildRank();
-  if (tab === 'arg')  buildArgTab();
-  if (tab === 'all')  buildAllTab();
+  if (tab === 'arg')  { loadResultados(function(){ buildArgTab(); }); }
+  if (tab === 'all')  { loadResultados(function(){ buildAllTab(); }); }
 }
 
 function goTriviaTab(tab) {
@@ -497,23 +534,51 @@ function attachInputHandlers() {
 }
 
 function matchHTMLWithData(m, i) {
-  var p = preds['m'+i] || {};
+  var p      = preds['m'+i] || {};
   var locked = isLocked(m);
-  var rnd = m.r ? '<span class="final-badge">'+m.r+'</span>' : '<span class="match-round">Grupo '+m.g+'</span>';
-  var lockInfo = locked ? '<span class="match-lock">'+lockLabel(m)+'</span>' : '';
-  var dis = locked ? ' disabled' : '';
-  var sc = locked ? 'sc sc-locked' : 'sc';
-  var ph = (p.h !== undefined && p.h !== '') ? p.h : '';
-  var pa = (p.a !== undefined && p.a !== '') ? p.a : '';
-  var cls = 'match' + (m.arg ? ' arg' : '') + (locked ? ' match-locked' : '');
+  var res    = resultados[i + 1]; // resultado real (partido_id 1-indexed)
+  var rnd    = m.r ? '<span class="final-badge">'+m.r+'</span>' : '<span class="match-round">Grupo '+m.g+'</span>';
+  var dis    = locked ? ' disabled' : '';
+  var sc     = locked ? 'sc sc-locked' : 'sc';
+  var ph     = (p.h !== undefined && p.h !== '') ? p.h : '';
+  var pa     = (p.a !== undefined && p.a !== '') ? p.a : '';
+  var cls    = 'match' + (m.arg ? ' arg' : '') + (locked ? ' match-locked' : '');
+
+  // Badge de puntos
+  var ptsBadge = '';
+  if (res && locked && ph !== '' && pa !== '') {
+    var pts = calcPuntos(i, ph, pa);
+    if (pts === 3)      ptsBadge = '<span class="pts-badge exact">+3 pts</span>';
+    else if (pts === 1) ptsBadge = '<span class="pts-badge correct">+1 pt</span>';
+    else if (pts === 0) ptsBadge = '<span class="pts-badge wrong">0 pts</span>';
+  } else if (locked && ph !== '' && pa !== '') {
+    ptsBadge = '<span class="pts-badge pending">En espera</span>';
+  }
+
+  // Resultado real al lado de los inputs (solo si finalizó)
+  var resLocal = res ? '<span class="result-real">'+res.gl+'</span>' : '';
+  var resVisit = res ? '<span class="result-real">'+res.gv+'</span>' : '';
+
+  // Indicador de lock
+  var lockInfo = '';
+  if (locked && res) {
+    lockInfo = '<span class="match-lock">⚽ Finalizado</span>';
+  } else if (locked) {
+    lockInfo = '<span class="match-lock">'+lockLabel(m)+'</span>';
+  }
+
   var html = '<div class="'+cls+'">';
-  html += '<div class="match-top">'+rnd+'<span class="match-time">'+m.t+' · '+m.s+'</span>'+lockInfo+'</div>';
+  html += '<div class="match-top">'+rnd+'<span class="match-time">'+m.t+' · '+m.s+'</span>'+lockInfo;
+  if (ptsBadge) html += ' ' + ptsBadge;
+  html += '</div>';
   html += '<div class="match-row">';
   html += '<span class="team">'+m.h+'</span>';
-  html += '<div class="score-box">';
+  html += '<div class="score-box" style="gap:4px">';
+  if (res) html += resLocal;
   html += '<input class="'+sc+'" type="number" min="0" max="30" placeholder="—" value="'+ph+'" data-idx="'+i+'" data-field="h"'+dis+'>';
   html += '<span class="sc-sep">–</span>';
   html += '<input class="'+sc+'" type="number" min="0" max="30" placeholder="—" value="'+pa+'" data-idx="'+i+'" data-field="a"'+dis+'>';
+  if (res) html += resVisit;
   html += '</div>';
   html += '<span class="team r">'+m.a+'</span>';
   html += '</div></div>';
