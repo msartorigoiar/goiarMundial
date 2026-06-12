@@ -298,7 +298,7 @@ function loadResultados(callback) {
 }
 
 function calcPuntos(i, ph, pa) {
-  var res = resultados[i + 1]; // partido_id es 1-indexed en la sheet
+  var res = resultados[i + 1] || resultados[String(i + 1)]; // partido_id 1-indexed
   if (!res) return null; // sin resultado aún
   var ph_i = parseInt(ph), pa_i = parseInt(pa);
   if (isNaN(ph_i) || isNaN(pa_i)) return null;
@@ -536,7 +536,7 @@ function attachInputHandlers() {
 function matchHTMLWithData(m, i) {
   var p      = preds['m'+i] || {};
   var locked = isLocked(m);
-  var res    = resultados[i + 1]; // resultado real (partido_id 1-indexed)
+  var res    = resultados[i + 1] || resultados[String(i + 1)]; // resultado real
   var rnd    = m.r ? '<span class="final-badge">'+m.r+'</span>' : '<span class="match-round">Grupo '+m.g+'</span>';
   var dis    = locked ? ' disabled' : '';
   var sc     = locked ? 'sc sc-locked' : 'sc';
