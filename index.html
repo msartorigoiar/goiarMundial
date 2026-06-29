@@ -289,10 +289,38 @@ function loadResultados(callback) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       resultados = data.resultados || {};
-      if (callback) callback();
+      // También actualizar nombres de equipos en FX desde la sheet
+      loadFixtureNames(callback);
     })
     .catch(function() {
       resultados = {};
+      if (callback) callback();
+    });
+}
+
+function loadFixtureNames(callback) {
+  fetch(SCRIPT_URL + '?action=fixture')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var fixtureSheet = data.fixture || [];
+      // Actualizar nombres en FX donde la sheet tenga nombres reales (no genéricos)
+      fixtureSheet.forEach(function(row) {
+        var pid = parseInt(row.id);
+        if (isNaN(pid) || pid < 73) return; // solo fase eliminatoria
+        var idx = pid - 1; // FX es 0-indexed
+        if (idx < 0 || idx >= FX.length) return;
+        var local = row.local || row['local'] || '';
+        var visitante = row.visitante || row['visitante'] || '';
+        // Solo actualizar si el nombre de la sheet no es genérico
+        var isGeneric = function(n) {
+          return n.indexOf('°') !== -1 || n.indexOf('Gan') !== -1 || n.indexOf('Per') !== -1;
+        };
+        if (local && !isGeneric(local))     FX[idx].h = local;
+        if (visitante && !isGeneric(visitante)) FX[idx].a = visitante;
+      });
+      if (callback) callback();
+    })
+    .catch(function() {
       if (callback) callback();
     });
 }
@@ -473,12 +501,17 @@ function getMatchDateTime(m) {
   var parts = m.t.split(':');
   var hh = parseInt(parts[0]);
   var mm = parseInt(parts[1]);
-  var etHour = hh - 1;
-  var dayAdj = offset;
-  if (etHour < 0) { etHour += 24; dayAdj -= 1; }
-  var BASE_UTC = new Date('2026-06-11T04:00:00Z');
-  var dt = new Date(BASE_UTC.getTime() + dayAdj*86400000 + etHour*3600000 + mm*60000);
-  if (etHour <= 3) dt = new Date(dt.getTime() + 86400000);
+
+  // Horarios 00:xx y 01:xx son madrugada del día SIGUIENTE al indicado en m.d
+  if (hh === 0 || hh === 1) offset += 1;
+
+  // BASE: 2026-06-11 00:00 ARG = 2026-06-11 03:00 UTC
+  var BASE_ARG_UTC = new Date('2026-06-11T03:00:00Z');
+  // Sumar días de offset (en ms) + hora ARG convertida a UTC (+3h)
+  var utcHour = hh + 3;
+  var extraDay = 0;
+  if (utcHour >= 24) { utcHour -= 24; extraDay = 1; }
+  var dt = new Date(BASE_ARG_UTC.getTime() + (offset + extraDay)*86400000 + utcHour*3600000 + mm*60000);
   return dt;
 }
 
