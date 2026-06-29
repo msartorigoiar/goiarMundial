@@ -517,7 +517,7 @@ function getMatchDateTime(m) {
 
 function isLocked(m) {
   if (!m.d || !m.t) return false;
-  var lockTime = new Date(getMatchDateTime(m).getTime() - 3600000);
+  var lockTime = getMatchDateTime(m); // bloquear exactamente al inicio
   return Date.now() >= lockTime.getTime();
 }
 
