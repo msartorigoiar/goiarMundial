@@ -497,21 +497,20 @@ var DAY_OFFSETS = {
 function getMatchDateTime(m) {
   // m.d es "Sáb 27/06" — extraer solo "27/06" para matchear DAY_OFFSETS
   var dateKey = m.d.replace(/^[A-Za-zÁÉÍÓÚáéíóúü]+\s+/, '');
-  var offset = DAY_OFFSETS[dateKey] || 0;
-  var parts = m.t.split(':');
-  var hh = parseInt(parts[0]);
-  var mm = parseInt(parts[1]);
+  var offset  = DAY_OFFSETS[dateKey] || 0;
+  var parts   = m.t.split(':');
+  var hh      = parseInt(parts[0]);
+  var mm      = parseInt(parts[1]);
 
   // Horarios 00:xx y 01:xx son madrugada del día SIGUIENTE al indicado en m.d
   if (hh === 0 || hh === 1) offset += 1;
 
-  // BASE: 2026-06-11 00:00 ARG = 2026-06-11 03:00 UTC
-  var BASE_ARG_UTC = new Date('2026-06-11T03:00:00Z');
-  // Sumar días de offset (en ms) + hora ARG convertida a UTC (+3h)
-  var utcHour = hh + 3;
+  // BASE: 2026-06-11 03:00 UTC = 2026-06-11 00:00 ARG
+  // Sumar offset de días + hora ARG directamente (sin +3, ya está en la base)
+  var BASE = new Date('2026-06-11T03:00:00Z');
   var extraDay = 0;
-  if (utcHour >= 24) { utcHour -= 24; extraDay = 1; }
-  var dt = new Date(BASE_ARG_UTC.getTime() + (offset + extraDay)*86400000 + utcHour*3600000 + mm*60000);
+  if (hh + 3 >= 24) extraDay = 1; // para horas que cruzan medianoche UTC (hh >= 21)
+  var dt = new Date(BASE.getTime() + (offset + extraDay)*86400000 + hh*3600000 + mm*60000);
   return dt;
 }
 
