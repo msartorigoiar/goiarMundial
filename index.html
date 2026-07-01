@@ -972,6 +972,9 @@ function toggleStage(stageKey) {
 }
 
 function calcTotalPuntos() {
+  // Usar puntos del servidor si están disponibles (más confiables)
+  if (window._serverPuntos !== undefined) return window._serverPuntos;
+  // Fallback: calcular localmente
   var total = 0;
   FX.forEach(function(m, i) {
     var p = preds['m'+i];
@@ -1055,6 +1058,17 @@ function buildRank() {
       });
       h += '</div>';
       el.innerHTML = h;
+
+      // Actualizar badge de puntos del servidor si la pestaña Todos está activa
+      var miRanking = ranking.find(function(u) { return u.usuario === uName; });
+      if (miRanking) {
+        window._serverPuntos = miRanking.puntos;
+        // Reconstruir pestaña Todos si está visible para mostrar puntos del servidor
+        var tabAll = document.getElementById('tab-all');
+        if (tabAll && !tabAll.classList.contains('section-hidden')) {
+          buildAllTab();
+        }
+      }
     })
     .catch(function() { el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>'; });
 }
