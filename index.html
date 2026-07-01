@@ -971,10 +971,31 @@ function toggleStage(stageKey) {
   buildAllTab();
 }
 
+function calcTotalPuntos() {
+  var total = 0;
+  FX.forEach(function(m, i) {
+    var p = preds['m'+i];
+    if (!p || p.h === '' || p.h === undefined || p.a === '' || p.a === undefined) return;
+    var pts = calcPuntos(i, p.h, p.a);
+    if (pts !== null) total += pts;
+  });
+  return total;
+}
+
 function buildAllTab() {
   if (Object.keys(stageCollapsed).length === 0) initStageCollapsed();
 
-  var h = filterChipsHTML('all');
+  // Calcular total de puntos del usuario
+  var totalPts = calcTotalPuntos();
+  var ptsBar = '<div style="background:#2E7D32;border-radius:var(--radius-md);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="font-family:var(--font-condensed);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.7);">Tus puntos acumulados</div>' +
+    '<div style="display:flex;align-items:baseline;gap:6px;">' +
+      '<span style="font-family:var(--font-display);font-size:32px;color:#ffffff;letter-spacing:1px;line-height:1;">'+totalPts+'</span>' +
+      '<span style="font-family:var(--font-condensed);font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.5px;">pts</span>' +
+    '</div>' +
+  '</div>';
+
+  var h = ptsBar + filterChipsHTML('all');
 
   STAGE_ORDER.forEach(function(stageKey) {
     var stageMatches = FX.map(function(m,i){ return {m:m, i:i}; })
