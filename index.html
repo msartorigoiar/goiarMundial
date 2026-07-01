@@ -88,7 +88,7 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 .stage-chevron.open{transform:rotate(180deg)}
 .stage-body{padding-top:10px}
 .stage-body.collapsed{display:none}
-.bracket-wrap{overflow-x:auto;padding:10px 4px 24px;-webkit-overflow-scrolling:touch;width:100vw;position:relative;left:50%;margin-left:-50vw}
+.bracket-wrap{overflow-x:auto;padding:10px 16px 24px;-webkit-overflow-scrolling:touch;width:100vw;position:relative;left:50%;margin-left:-50vw;display:flex;justify-content:center}
 .bracket-cols{display:flex;gap:14px;min-width:max-content}
 .bracket-col{display:flex;flex-direction:column;min-width:200px}
 .bracket-col-title{font-family:var(--font-condensed);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;text-align:center;margin-bottom:10px;padding:6px 0;border-bottom:2px solid var(--color-border)}
@@ -1039,16 +1039,80 @@ function buildAllTab() {
 function buildRank() {
   var el = document.getElementById('rankContent');
   el.innerHTML = '<div style="padding:28px;text-align:center;color:#B0A9A2;font-family:var(--font-condensed);font-size:14px;">Cargando ranking...</div>';
+
+  // Cargar resultados primero para tener calcTotalPuntos actualizado
+  loadResultados(function() {
+    var misPuntos = calcTotalPuntos(); // misma sumatoria que "Todos los partidos"
+
+    fetch(SCRIPT_URL + '?action=ranking')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var ranking = data.ranking || [];
+        var total   = data.total || FX.length;
+        var medals  = ['🥇','🥈','🥉'];
+
+        // Para el usuario logueado: reemplazar puntos del servidor
+        // con los calculados localmente (misma lógica que "Todos los partidos")
+        ranking = ranking.map(function(u) {
+          if (u.usuario === uName) return Object.assign({}, u, {puntos: misPuntos});
+          return u;
+        });
+
+        // Re-ordenar
+        ranking.sort(function(a, b) {
+          return b.puntos - a.puntos || b.predicciones - a.predicciones;
+        });
+
+        var h = '<div class="rank-wrap"><div class="rank-head"><div class="rh-pos">#</div><div class="rh-name">Participante</div><div class="rh-prog">Avance</div><div class="rh-pts">Pts</div></div>';
+        ranking.forEach(function(u, i) {
+          var pct = Math.round((u.predicciones / total) * 100);
+          var me  = u.usuario === uName;
+          h += '<div class="rank-row'+(me?' me':'')+'">';
+          h += '<div class="rk-pos">'+(medals[i]||i+1)+'</div>';
+          h += '<div class="rk-name"><strong>'+u.usuario+(me?' <span style="color:var(--color-primary);font-size:11px">(vos)</span>':'')+'</strong><span>'+u.predicciones+'/'+total+' partidos</span></div>';
+          h += '<div class="rk-prog"><div style="font-size:11px;color:#B0A9A2;font-family:var(--font-condensed);font-weight:700">'+pct+'%</div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';
+          h += '<div class="rk-pts"><strong>'+u.puntos+'</strong><span>puntos</span></div>';
+          h += '</div>';
+        });
+        h += '</div>';
+        el.innerHTML = h;
+      })
+      .catch(function() {
+        el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>';
+      });
+  });
+}
+
+
+function _buildRankWithData(el) {
+  // Calcular puntos localmente — misma lógica que "Todos los partidos"
+  var misPuntos = calcTotalPuntos();
+  window._serverPuntos = misPuntos;
+
   fetch(SCRIPT_URL + '?action=ranking')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var ranking = data.ranking || [];
-      var total = data.total || FX.length;
-      var medals = ['🥇','🥈','🥉'];
+      var total   = data.total || FX.length;
+      var medals  = ['🥇','🥈','🥉'];
+
+      // Para el usuario logueado, reemplazar puntos del servidor con los calculados localmente
+      ranking = ranking.map(function(u) {
+        if (u.usuario === uName) {
+          return Object.assign({}, u, {puntos: misPuntos});
+        }
+        return u;
+      });
+
+      // Re-ordenar por puntos actualizados
+      ranking.sort(function(a, b) {
+        return b.puntos - a.puntos || b.predicciones - a.predicciones;
+      });
+
       var h = '<div class="rank-wrap"><div class="rank-head"><div class="rh-pos">#</div><div class="rh-name">Participante</div><div class="rh-prog">Avance</div><div class="rh-pts">Pts</div></div>';
       ranking.forEach(function(u, i) {
         var pct = Math.round((u.predicciones / total) * 100);
-        var me = u.usuario === uName;
+        var me  = u.usuario === uName;
         h += '<div class="rank-row'+(me?' me':'')+'">';
         h += '<div class="rk-pos">'+(medals[i]||i+1)+'</div>';
         h += '<div class="rk-name"><strong>'+u.usuario+(me?' <span style="color:var(--color-primary);font-size:11px">(vos)</span>':'')+'</strong><span>'+u.predicciones+'/'+total+' partidos</span></div>';
@@ -1058,143 +1122,7 @@ function buildRank() {
       });
       h += '</div>';
       el.innerHTML = h;
-
-      // Actualizar badge de puntos del servidor si la pestaña Todos está activa
-      var miRanking = ranking.find(function(u) { return u.usuario === uName; });
-      if (miRanking) {
-        window._serverPuntos = miRanking.puntos;
-        // Reconstruir pestaña Todos si está visible para mostrar puntos del servidor
-        var tabAll = document.getElementById('tab-all');
-        if (tabAll && !tabAll.classList.contains('section-hidden')) {
-          buildAllTab();
-        }
-      }
     })
     .catch(function() { el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>'; });
 }
-
-// ============================================================
-//  FIXTURE DATA
-// ============================================================
-const FX = [
-  {d:"Jue 11/06",g:"A",h:"México",a:"Sudáfrica",t:"16:00",s:"Ciudad de México",arg:false},
-  {d:"Jue 11/06",g:"A",h:"Corea del Sur",a:"Rep. Checa",t:"23:00",s:"Guadalajara",arg:false},
-  {d:"Vie 12/06",g:"B",h:"Canadá",a:"Bosnia y Herz.",t:"16:00",s:"Toronto",arg:false},
-  {d:"Vie 12/06",g:"D",h:"Estados Unidos",a:"Paraguay",t:"22:00",s:"Los Ángeles",arg:false},
-  {d:"Sáb 13/06",g:"B",h:"Qatar",a:"Suiza",t:"16:00",s:"San Francisco",arg:false},
-  {d:"Sáb 13/06",g:"C",h:"Brasil",a:"Marruecos",t:"19:00",s:"Nueva Jersey",arg:false},
-  {d:"Sáb 13/06",g:"C",h:"Haití",a:"Escocia",t:"22:00",s:"Boston",arg:false},
-  {d:"Sáb 13/06",g:"D",h:"Australia",a:"Turquía",t:"01:00",s:"Vancouver",arg:false},
-  {d:"Dom 14/06",g:"E",h:"Alemania",a:"Curazao",t:"14:00",s:"Houston",arg:false},
-  {d:"Dom 14/06",g:"F",h:"Países Bajos",a:"Japón",t:"17:00",s:"Dallas",arg:false},
-  {d:"Dom 14/06",g:"E",h:"Costa de Marfil",a:"Ecuador",t:"20:00",s:"Philadelphia",arg:false},
-  {d:"Dom 14/06",g:"F",h:"Suecia",a:"Túnez",t:"23:00",s:"Monterrey",arg:false},
-  {d:"Lun 15/06",g:"H",h:"España",a:"Cabo Verde",t:"13:00",s:"Atlanta",arg:false},
-  {d:"Lun 15/06",g:"G",h:"Bélgica",a:"Egipto",t:"16:00",s:"Seattle",arg:false},
-  {d:"Lun 15/06",g:"H",h:"Arabia Saudita",a:"Uruguay",t:"19:00",s:"Miami",arg:false},
-  {d:"Lun 15/06",g:"G",h:"Irán",a:"Nueva Zelanda",t:"22:00",s:"Los Ángeles",arg:false},
-  {d:"Mar 16/06",g:"I",h:"Francia",a:"Senegal",t:"16:00",s:"Nueva Jersey",arg:false},
-  {d:"Mar 16/06",g:"I",h:"Irak",a:"Noruega",t:"19:00",s:"Boston",arg:false},
-  {d:"Mar 16/06",g:"J",h:"Argentina",a:"Argelia",t:"22:00",s:"Kansas City",arg:true},
-  {d:"Mar 16/06",g:"J",h:"Austria",a:"Jordania",t:"01:00",s:"San Francisco",arg:false},
-  {d:"Mié 17/06",g:"K",h:"Portugal",a:"RD Congo",t:"14:00",s:"Houston",arg:false},
-  {d:"Mié 17/06",g:"L",h:"Inglaterra",a:"Croacia",t:"17:00",s:"Dallas",arg:false},
-  {d:"Mié 17/06",g:"L",h:"Ghana",a:"Panamá",t:"20:00",s:"Toronto",arg:false},
-  {d:"Mié 17/06",g:"K",h:"Uzbekistán",a:"Colombia",t:"23:00",s:"Ciudad de México",arg:false},
-  {d:"Jue 18/06",g:"A",h:"Rep. Checa",a:"Sudáfrica",t:"13:00",s:"Atlanta",arg:false},
-  {d:"Jue 18/06",g:"B",h:"Suiza",a:"Bosnia y Herz.",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Jue 18/06",g:"B",h:"Canadá",a:"Qatar",t:"19:00",s:"Vancouver",arg:false},
-  {d:"Jue 18/06",g:"A",h:"México",a:"Corea del Sur",t:"22:00",s:"Guadalajara",arg:false},
-  {d:"Vie 19/06",g:"D",h:"Estados Unidos",a:"Australia",t:"16:00",s:"Seattle",arg:false},
-  {d:"Vie 19/06",g:"C",h:"Escocia",a:"Marruecos",t:"19:00",s:"Boston",arg:false},
-  {d:"Vie 19/06",g:"C",h:"Brasil",a:"Haití",t:"21:30",s:"Philadelphia",arg:false},
-  {d:"Vie 19/06",g:"D",h:"Turquía",a:"Paraguay",t:"00:00",s:"San Francisco",arg:false},
-  {d:"Sáb 20/06",g:"F",h:"Países Bajos",a:"Suecia",t:"14:00",s:"Houston",arg:false},
-  {d:"Sáb 20/06",g:"E",h:"Alemania",a:"Costa de Marfil",t:"17:00",s:"Toronto",arg:false},
-  {d:"Sáb 20/06",g:"E",h:"Ecuador",a:"Curazao",t:"21:00",s:"Kansas City",arg:false},
-  {d:"Sáb 20/06",g:"F",h:"Túnez",a:"Japón",t:"01:00",s:"Monterrey",arg:false},
-  {d:"Dom 21/06",g:"H",h:"España",a:"Arabia Saudita",t:"13:00",s:"Atlanta",arg:false},
-  {d:"Dom 21/06",g:"G",h:"Bélgica",a:"Irán",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Dom 21/06",g:"H",h:"Uruguay",a:"Cabo Verde",t:"19:00",s:"Miami",arg:false},
-  {d:"Dom 21/06",g:"G",h:"Nueva Zelanda",a:"Egipto",t:"22:00",s:"Vancouver",arg:false},
-  {d:"Lun 22/06",g:"J",h:"Argentina",a:"Austria",t:"14:00",s:"Dallas",arg:true},
-  {d:"Lun 22/06",g:"I",h:"Francia",a:"Irak",t:"18:00",s:"Philadelphia",arg:false},
-  {d:"Lun 22/06",g:"I",h:"Noruega",a:"Senegal",t:"21:00",s:"Nueva Jersey",arg:false},
-  {d:"Lun 22/06",g:"J",h:"Jordania",a:"Argelia",t:"00:00",s:"San Francisco",arg:false},
-  {d:"Mar 23/06",g:"K",h:"Portugal",a:"Uzbekistán",t:"14:00",s:"Houston",arg:false},
-  {d:"Mar 23/06",g:"L",h:"Inglaterra",a:"Ghana",t:"17:00",s:"Boston",arg:false},
-  {d:"Mar 23/06",g:"L",h:"Panamá",a:"Croacia",t:"20:00",s:"Toronto",arg:false},
-  {d:"Mar 23/06",g:"K",h:"Colombia",a:"RD Congo",t:"23:00",s:"Guadalajara",arg:false},
-  {d:"Mié 24/06",g:"B",h:"Suiza",a:"Canadá",t:"16:00",s:"Vancouver",arg:false},
-  {d:"Mié 24/06",g:"B",h:"Bosnia y Herz.",a:"Qatar",t:"16:00",s:"Seattle",arg:false},
-  {d:"Mié 24/06",g:"C",h:"Marruecos",a:"Haití",t:"19:00",s:"Atlanta",arg:false},
-  {d:"Mié 24/06",g:"C",h:"Brasil",a:"Escocia",t:"19:00",s:"Miami",arg:false},
-  {d:"Mié 24/06",g:"A",h:"Sudáfrica",a:"Corea del Sur",t:"22:00",s:"Monterrey",arg:false},
-  {d:"Mié 24/06",g:"A",h:"Rep. Checa",a:"México",t:"22:00",s:"Ciudad de México",arg:false},
-  {d:"Jue 25/06",g:"E",h:"Curazao",a:"Costa de Marfil",t:"17:00",s:"Philadelphia",arg:false},
-  {d:"Jue 25/06",g:"E",h:"Ecuador",a:"Alemania",t:"17:00",s:"Nueva Jersey",arg:false},
-  {d:"Jue 25/06",g:"F",h:"Japón",a:"Suecia",t:"20:00",s:"Dallas",arg:false},
-  {d:"Jue 25/06",g:"F",h:"Túnez",a:"Países Bajos",t:"20:00",s:"Kansas City",arg:false},
-  {d:"Jue 25/06",g:"D",h:"Paraguay",a:"Australia",t:"23:00",s:"San Francisco",arg:false},
-  {d:"Jue 25/06",g:"D",h:"Turquía",a:"Estados Unidos",t:"23:00",s:"Los Ángeles",arg:false},
-  {d:"Vie 26/06",g:"I",h:"Noruega",a:"Francia",t:"16:00",s:"Boston",arg:false},
-  {d:"Vie 26/06",g:"I",h:"Senegal",a:"Irak",t:"16:00",s:"Toronto",arg:false},
-  {d:"Vie 26/06",g:"H",h:"Cabo Verde",a:"Arabia Saudita",t:"21:00",s:"Houston",arg:false},
-  {d:"Vie 26/06",g:"H",h:"Uruguay",a:"España",t:"21:00",s:"Guadalajara",arg:false},
-  {d:"Vie 26/06",g:"G",h:"Egipto",a:"Irán",t:"00:00",s:"Seattle",arg:false},
-  {d:"Vie 26/06",g:"G",h:"Nueva Zelanda",a:"Bélgica",t:"00:00",s:"Vancouver",arg:false},
-  {d:"Sáb 27/06",g:"L",h:"Croacia",a:"Ghana",t:"18:00",s:"Philadelphia",arg:false},
-  {d:"Sáb 27/06",g:"L",h:"Panamá",a:"Inglaterra",t:"18:00",s:"Nueva Jersey",arg:false},
-  {d:"Sáb 27/06",g:"K",h:"Colombia",a:"Portugal",t:"20:30",s:"Miami",arg:false},
-  {d:"Sáb 27/06",g:"K",h:"RD Congo",a:"Uzbekistán",t:"20:30",s:"Atlanta",arg:false},
-  {d:"Sáb 27/06",g:"J",h:"Argelia",a:"Austria",t:"00:00",s:"Kansas City",arg:false},
-  {d:"Sáb 27/06",g:"J",h:"Jordania",a:"Argentina",t:"00:00",s:"Dallas",arg:true},
-  {d:"Dom 28/06",r:"16avos",h:"Sudáfrica",a:"Canadá",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"Brasil",a:"Japón",t:"14:00",s:"Houston",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"Alemania",a:"Paraguay",t:"17:30",s:"Monterrey",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"Países Bajos",a:"Marruecos",t:"22:00",s:"Dallas",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"Costa de Marfil",a:"Noruega",t:"14:00",s:"Nueva Jersey",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"Francia",a:"Suecia",t:"18:00",s:"Seattle",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"México",a:"Ecuador",t:"22:00",s:"Toronto",arg:false},
-  {d:"Mié 01/07",r:"16avos",h:"Inglaterra",a:"RD Congo",t:"13:00",s:"Atlanta",arg:false},
-  {d:"Mié 01/07",r:"16avos",h:"Bélgica",a:"Senegal",t:"17:00",s:"Seattle",arg:false},
-  {d:"Mié 01/07",r:"16avos",h:"Estados Unidos",a:"Bosnia y Herz.",t:"21:00",s:"San Francisco",arg:false},
-  {d:"Jue 02/07",r:"16avos",h:"España",a:"Austria",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Jue 02/07",r:"16avos",h:"Portugal",a:"Croacia",t:"20:00",s:"Toronto",arg:false},
-  {d:"Vie 03/07",r:"16avos",h:"Suiza",a:"Argelia",t:"00:00",s:"Vancouver",arg:false},
-  {d:"Vie 03/07",r:"16avos",h:"Australia",a:"Egipto",t:"15:00",s:"Dallas",arg:false},
-  {d:"Vie 03/07",r:"16avos",h:"Argentina",a:"Cabo Verde",t:"19:00",s:"Miami",arg:true},
-  {d:"Vie 03/07",r:"16avos",h:"Colombia",a:"Ghana",t:"22:30",s:"Kansas City",arg:false},
-  {d:"Sáb 04/07",r:"Octavos",h:"Canadá",a:"Marruecos",t:"14:00",s:"Houston",arg:false},
-  {d:"Sáb 04/07",r:"Octavos",h:"Paraguay",a:"Francia",t:"18:00",s:"Philadelphia",arg:false},
-  {d:"Dom 05/07",r:"Octavos",h:"Brasil",a:"Noruega",t:"17:00",s:"Nueva Jersey",arg:false},
-  {d:"Dom 05/07",r:"Octavos",h:"Gan. P80",a:"Gan. P81",t:"20:00",s:"Seattle",arg:false},
-  {d:"Lun 07/07",r:"Octavos",h:"Gan. P82",a:"Gan. P83",t:"14:00",s:"Los Ángeles",arg:false},
-  {d:"Lun 07/07",r:"Octavos",h:"Gan. P84",a:"Gan. P85",t:"18:00",s:"Atlanta",arg:false},
-  {d:"Mar 08/07",r:"Octavos",h:"Gan. P86",a:"Gan. P87",t:"14:00",s:"Dallas",arg:false},
-  {d:"Mar 08/07",r:"Octavos",h:"Gan. P88",a:"Gan. P89",t:"18:00",s:"Houston",arg:false},
-  {d:"Sáb 11/07",r:"Cuartos",h:"Gan. P89",a:"Gan. P90",t:"14:00",s:"Los Ángeles",arg:false},
-  {d:"Sáb 11/07",r:"Cuartos",h:"Gan. P91",a:"Gan. P92",t:"18:00",s:"Philadelphia",arg:false},
-  {d:"Dom 12/07",r:"Cuartos",h:"Gan. P93",a:"Gan. P94",t:"14:00",s:"Dallas",arg:false},
-  {d:"Dom 12/07",r:"Cuartos",h:"Gan. P95",a:"Gan. P96",t:"18:00",s:"Miami",arg:false},
-  {d:"Mar 14/07",r:"Semifinal",h:"Gan. SF1",a:"Gan. SF2",t:"21:00",s:"Dallas",arg:false},
-  {d:"Mié 15/07",r:"Semifinal",h:"Gan. SF3",a:"Gan. SF4",t:"21:00",s:"Atlanta",arg:false},
-  {d:"Sáb 18/07",r:"3° Puesto",h:"Per. SF1",a:"Per. SF2",t:"14:00",s:"Miami",arg:false},
-  {d:"Dom 19/07",r:"FINAL",h:"Gan. SF1",a:"Gan. SF2",t:"17:00",s:"Nueva Jersey",arg:false}
-];
-
-
-
-// Cargar resultados y mostrar próximo partido de Argentina en pantalla de login
-fetch(SCRIPT_URL + '?action=resultados')
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    resultados = data.resultados || {};
-    renderNextArgMatch();
-  })
-  .catch(function() {
-    renderNextArgMatch(); // mostrar con lo que haya (sin resultados)
-  });
-</script>
-</body>
-</html>
+>
