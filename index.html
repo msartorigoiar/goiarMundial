@@ -100,6 +100,7 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 .bracket-team-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bracket-score{font-family:var(--font-display);font-size:14px;min-width:18px;text-align:center;flex-shrink:0}
 .bracket-date{font-size:9px;color:#B0A9A2;text-align:center;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.bracket-arg{border-color:var(--color-primary)!important;border-width:2px!important}
 .match-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
 .match-round{font-family:var(--font-condensed);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#B0A9A2}
 .match-time{font-size:11px;color:#B0A9A2}
@@ -735,17 +736,64 @@ function renderNextArgMatch() {
 // ============================================================
 //  BRACKET — Ver Fixture (16avos en adelante)
 // ============================================================
+var BRACKET_CARD_H = {'16avos':96,'Octavos':100,'Cuartos':100,'Semifinal':100,'FINAL':100};
+
 function bracketCardHTML(m, idx) {
-  var res = resultados[idx+1] || resultados[String(idx+1)];
-  var isTbd = !res && (m.h.indexOf('°') !== -1 || m.h.indexOf('Gan') !== -1 || m.h.indexOf('Per') !== -1 ||
-                        m.a.indexOf('°') !== -1 || m.a.indexOf('Gan') !== -1 || m.a.indexOf('Per') !== -1);
+  var res  = resultados[idx+1] || resultados[String(idx+1)];
+  var pred = preds['m'+idx];
+  var isTbd = !m.h || m.h.indexOf('°') !== -1 || m.h.indexOf('Gan') !== -1 || m.h.indexOf('Per') !== -1 ||
+              !m.a || m.a.indexOf('°') !== -1 || m.a.indexOf('Gan') !== -1 || m.a.indexOf('Per') !== -1;
 
   var homeWin = res && res.gl > res.gv;
   var awayWin = res && res.gv > res.gl;
 
-  var html = '<div class="bracket-card'+(isTbd?' tbd':'')+'">';
-  html += '<div class="bracket-row'+(homeWin?' winner':'')+'"><span class="bracket-team-name">'+teamFlag(m.h)+m.h+'</span><span class="bracket-score">'+(res?res.gl:'–')+'</span></div>';
-  html += '<div class="bracket-row'+(awayWin?' winner':'')+'"><span class="bracket-team-name">'+teamFlag(m.a)+m.a+'</span><span class="bracket-score">'+(res?res.gv:'–')+'</span></div>';
+  // Resultado real
+  var rH = res ? String(res.gl) : '–';
+  var rA = res ? String(res.gv) : '–';
+
+  // Pronóstico del usuario
+  var pH = (pred && pred.h !== '' && pred.h !== undefined) ? String(pred.h) : '–';
+  var pA = (pred && pred.a !== '' && pred.a !== undefined) ? String(pred.a) : '–';
+
+  // Badge de puntos si hay resultado y predicción
+  var pts = null;
+  if (res && pred && pH !== '–' && pA !== '–') {
+    pts = calcPuntos(idx, pH, pA);
+  }
+  var ptsBadge = '';
+  if (pts === 3)      ptsBadge = '<span style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;border-radius:99px;font-size:9px;font-weight:700;padding:1px 5px;font-family:var(--font-condensed);">+3</span>';
+  else if (pts === 1) ptsBadge = '<span style="background:#FFF8E1;color:#F57F17;border:1px solid #FFE082;border-radius:99px;font-size:9px;font-weight:700;padding:1px 5px;font-family:var(--font-condensed);">+1</span>';
+  else if (pts === 0) ptsBadge = '<span style="background:#FBE9E7;color:#BF360C;border:1px solid #FFAB91;border-radius:99px;font-size:9px;font-weight:700;padding:1px 5px;font-family:var(--font-condensed);">0</span>';
+
+  var html = '<div class="bracket-card'+(isTbd?' tbd':'')+(m.h==='Argentina'||m.a==='Argentina'?' bracket-arg':'')+'">';
+
+  // Header con badge de puntos
+  if (ptsBadge) {
+    html += '<div style="display:flex;justify-content:flex-end;margin-bottom:3px;">'+ptsBadge+'</div>';
+  }
+
+  // Fila local
+  html += '<div class="bracket-row'+(homeWin?' winner':'')+'">';
+  html += '<span class="bracket-team-name">'+teamFlag(m.h)+m.h+'</span>';
+  html += '<div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">';
+  html += '<span class="bracket-score">'+rH+'</span>';
+  html += '<span style="font-size:10px;color:#B0A9A2;min-width:16px;text-align:right;">'+pH+'</span>';
+  html += '</div></div>';
+
+  // Separador con etiquetas
+  html += '<div style="display:flex;justify-content:flex-end;gap:5px;padding:1px 0;">';
+  html += '<span style="font-size:8px;color:#CCC;min-width:16px;text-align:center;">Real</span>';
+  html += '<span style="font-size:8px;color:#CCC;min-width:16px;text-align:right;">Pred</span>';
+  html += '</div>';
+
+  // Fila visitante
+  html += '<div class="bracket-row'+(awayWin?' winner':'')+'">';
+  html += '<span class="bracket-team-name">'+teamFlag(m.a)+m.a+'</span>';
+  html += '<div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">';
+  html += '<span class="bracket-score">'+rA+'</span>';
+  html += '<span style="font-size:10px;color:#B0A9A2;min-width:16px;text-align:right;">'+pA+'</span>';
+  html += '</div></div>';
+
   html += '<div class="bracket-date">'+m.d+' · '+m.t+'</div>';
   html += '</div>';
   return html;
@@ -753,32 +801,60 @@ function bracketCardHTML(m, idx) {
 
 function buildBracketTab() {
   var stages = [
-    {key:'16avos',     label:'16avos de Final'},
-    {key:'Octavos',    label:'Octavos de Final'},
-    {key:'Cuartos',    label:'Cuartos de Final'},
+    {key:'16avos',     label:'16avos'},
+    {key:'Octavos',    label:'Octavos'},
+    {key:'Cuartos',    label:'Cuartos'},
     {key:'Semifinal',  label:'Semifinal'},
     {key:'FINAL',      label:'Final'}
   ];
 
-  var h = '<div class="bracket-wrap"><div class="bracket-cols">';
+  // Alturas de card por fase
+  var cardH = {'16avos':96,'Octavos':192,'Cuartos':384,'Semifinal':768,'FINAL':768};
 
-  stages.forEach(function(stage) {
+  var wrap = '<div class="bracket-wrap"><div style="display:flex;gap:0;min-width:max-content;align-items:flex-start;">';
+
+  stages.forEach(function(stage, si) {
     var matches = FX.map(function(m,i){ return {m:m, i:i}; })
                      .filter(function(o){ return o.m.r === stage.key; });
     if (matches.length === 0) return;
 
-    h += '<div class="bracket-col">';
-    h += '<div class="bracket-col-title">'+stage.label+'</div>';
-    h += '<div class="bracket-matches">';
-    matches.forEach(function(o) {
-      h += bracketCardHTML(o.m, o.i);
+    var ch = cardH[stage.key] || 96;
+    var totalH = matches.length * ch;
+
+    // Columna de partidos
+    wrap += '<div style="display:flex;flex-direction:column;">';
+    wrap += '<div class="bracket-col-title" style="margin-bottom:8px;">'+stage.label+'</div>';
+    wrap += '<div style="position:relative;min-height:'+totalH+'px;width:200px;">';
+    matches.forEach(function(o, i) {
+      var top = i * ch + ch/2 - 60;
+      wrap += '<div style="position:absolute;top:'+top+'px;left:4px;right:4px;">';
+      wrap += bracketCardHTML(o.m, o.i);
+      wrap += '</div>';
     });
-    h += '</div></div>';
+    wrap += '</div></div>';
+
+    // Conectores SVG entre columnas
+    if (si < stages.length - 1) {
+      var n = matches.length;
+      var pairs = Math.floor(n/2);
+      var paths = '';
+      for (var p = 0; p < pairs; p++) {
+        var y1 = p * 2 * ch + ch/2;
+        var y2 = (p*2+1) * ch + ch/2;
+        var ym = (y1+y2)/2;
+        paths += '<path d="M0,'+y1+' L11,'+y1+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
+        paths += '<path d="M0,'+y2+' L11,'+y2+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
+        paths += '<path d="M11,'+ym+' L22,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
+      }
+      wrap += '<div style="width:22px;flex-shrink:0;position:relative;height:'+totalH+'px;margin-top:27px;">';
+      wrap += '<svg style="position:absolute;top:0;left:0;" width="22" height="'+totalH+'" viewBox="0 0 22 '+totalH+'">'+paths+'</svg>';
+      wrap += '</div>';
+    }
   });
 
-  h += '</div></div>';
-  h += '<div style="height:80px"></div>';
-  document.getElementById('tab-bracket').innerHTML = h;
+  wrap += '</div></div>';
+  wrap += '<div style="height:80px"></div>';
+  document.getElementById('tab-bracket').innerHTML = wrap;
 }
 
 function isArgentinaMatch(m) {
