@@ -794,58 +794,113 @@ function bracketCardHTML(m, idx) {
   return html;
 }
 
-function buildBracketTab() {
-  var stages = [
-    {key:'16avos',     label:'16avos'},
-    {key:'Octavos',    label:'Octavos'},
-    {key:'Cuartos',    label:'Cuartos'},
-    {key:'Semifinal',  label:'Semifinal'},
-    {key:'FINAL',      label:'Final'}
-  ];
+// Mapa explícito de pares del bracket — índice del FX (0-based)
+// Par: [idx_partido_A, idx_partido_B] → van al mismo cruce de Octavos
+// Basado en el bracket oficial del Mundial 2026
+var BRACKET_PAIRS_16 = [
+  [72, 73],  // Sudáfrica-Canadá + Brasil-Japón → Canadá vs Marruecos... NO
+  // El bracket correcto por partido_id de la sheet:
+  // P73(Sudáfrica-Canadá) + P74(Brasil-Japón) → Canadá vs Marruecos
+  // Pero en el FX: Sudáfrica-Canadá=idx72, Brasil-Japón=idx73, etc.
+];
 
-  // Alturas de card por fase
-  var cardH = {'16avos':96,'Octavos':192,'Cuartos':384,'Semifinal':768,'FINAL':768};
+function buildBracketTab() {
+  // Obtener partidos por fase usando FX
+  function getStage(key) {
+    return FX.map(function(m,i){ return {m:m, i:i}; })
+             .filter(function(o){ return o.m.r === key; });
+  }
+
+  var s16  = getStage('16avos');    // 16 partidos
+  var sOct = getStage('Octavos');   // 8 partidos
+  var sQF  = getStage('Cuartos');   // 4 partidos
+  var sSF  = getStage('Semifinal'); // 2 partidos
+  var sFin = getStage('FINAL');     // 1 partido
+
+  // Pares de 16avos que van al mismo octavo (índice dentro de s16[])
+  // Definidos explícitamente según el bracket oficial
+  // Canadá vs Marruecos ← gan(P73 Sud-Can) + gan(P76 PB-Mar)
+  // Paraguay vs Francia  ← gan(P75 Ale-Par) + gan(P78 Fra-Sue)
+  // Brasil vs Noruega    ← gan(P74 Bra-Jap) + gan(P77 CdM-Nor)
+  // Los índices en s16[] dependen del orden en FX
+  // s16[0]=Sud-Can, s16[1]=Bra-Jap, s16[2]=Ale-Par, s16[3]=PB-Mar
+  // s16[4]=CdM-Nor, s16[5]=Fra-Sue, s16[6]=Mex-Ecu, s16[7]=Ing-RDC
+  // s16[8]=Bel-Sen, s16[9]=EEUU-Bos, s16[10]=Esp-Aut, s16[11]=Por-Cro
+  // s16[12]=Sui-Arg, s16[13]=Aus-Egi, s16[14]=Arg-CV, s16[15]=Col-Gha
+  var pairs16 = [[0,3],[2,5],[1,4],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  // → Par1: Sud-Can+PB-Mar, Par2: Ale-Par+Fra-Sue, Par3: Bra-Jap+CdM-Nor
+  // → Par4: Mex-Ecu+Ing-RDC, Par5: Bel-Sen+EEUU-Bos, Par6: Esp-Aut+Por-Cro
+  // → Par7: Sui-Arg+Aus-Egi, Par8: Arg-CV+Col-Gha
+
+  var cardH16  = 88;
+  var cardHOct = 176;
+  var cardHQF  = 352;
+  var cardHSF  = 704;
+  var cardHFin = 704;
+
+  function colStart(pairs, cardH, label, matchList) {
+    var n = pairs.length; // número de pares = número de cards en esta columna
+    var totalH = n * 2 * cardH;
+    var html = '<div style="display:flex;flex-direction:column;">';
+    html += '<div class="bracket-col-title" style="margin-bottom:8px;">'+label+'</div>';
+    html += '<div style="position:relative;min-height:'+totalH+'px;width:200px;">';
+    pairs.forEach(function(pair, pi) {
+      [0,1].forEach(function(side) {
+        var oi = pair[side];
+        var o  = matchList[oi];
+        if (!o) return;
+        var top = (pi * 2 + side) * cardH + cardH/2 - 55;
+        html += '<div style="position:absolute;top:'+top+'px;left:4px;right:4px;">';
+        html += bracketCardHTML(o.m, o.i);
+        html += '</div>';
+      });
+    });
+    html += '</div></div>';
+    return html;
+  }
+
+  function colSimple(matches, cardH, label) {
+    var totalH = matches.length * cardH;
+    var html = '<div style="display:flex;flex-direction:column;">';
+    html += '<div class="bracket-col-title" style="margin-bottom:8px;">'+label+'</div>';
+    html += '<div style="position:relative;min-height:'+totalH+'px;width:200px;">';
+    matches.forEach(function(o, i) {
+      var top = i * cardH + cardH/2 - 55;
+      html += '<div style="position:absolute;top:'+top+'px;left:4px;right:4px;">';
+      html += bracketCardHTML(o.m, o.i);
+      html += '</div>';
+    });
+    html += '</div></div>';
+    return html;
+  }
+
+  function connectors(n, cardH, marginTop) {
+    var totalH = n * cardH;
+    var pairs  = Math.floor(n/2);
+    var paths  = '';
+    for (var p = 0; p < pairs; p++) {
+      var y1 = p * 2 * cardH + cardH/2;
+      var y2 = (p*2+1) * cardH + cardH/2;
+      var ym = (y1+y2)/2;
+      paths += '<path d="M0,'+y1+' L11,'+y1+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1.5"/>';
+      paths += '<path d="M0,'+y2+' L11,'+y2+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1.5"/>';
+      paths += '<path d="M11,'+ym+' L22,'+ym+'" fill="none" stroke="#DDD" stroke-width="1.5"/>';
+    }
+    return '<div style="width:22px;flex-shrink:0;position:relative;height:'+totalH+'px;margin-top:'+(marginTop||27)+'px;">' +
+           '<svg style="position:absolute;top:0;left:0;" width="22" height="'+totalH+'" viewBox="0 0 22 '+totalH+'">'+paths+'</svg></div>';
+  }
 
   var wrap = '<div class="bracket-wrap"><div style="display:flex;gap:0;min-width:max-content;align-items:flex-start;">';
 
-  stages.forEach(function(stage, si) {
-    var matches = FX.map(function(m,i){ return {m:m, i:i}; })
-                     .filter(function(o){ return o.m.r === stage.key; });
-    if (matches.length === 0) return;
+  // 16avos — usando pares explícitos
+  wrap += colStart(pairs16, cardH16, '16avos', s16);
+  wrap += connectors(16, cardH16, 27);
 
-    var ch = cardH[stage.key] || 96;
-    var totalH = matches.length * ch;
-
-    // Columna de partidos
-    wrap += '<div style="display:flex;flex-direction:column;">';
-    wrap += '<div class="bracket-col-title" style="margin-bottom:8px;">'+stage.label+'</div>';
-    wrap += '<div style="position:relative;min-height:'+totalH+'px;width:200px;">';
-    matches.forEach(function(o, i) {
-      var top = i * ch + ch/2 - 60;
-      wrap += '<div style="position:absolute;top:'+top+'px;left:4px;right:4px;">';
-      wrap += bracketCardHTML(o.m, o.i);
-      wrap += '</div>';
-    });
-    wrap += '</div></div>';
-
-    // Conectores SVG entre columnas
-    if (si < stages.length - 1) {
-      var n = matches.length;
-      var pairs = Math.floor(n/2);
-      var paths = '';
-      for (var p = 0; p < pairs; p++) {
-        var y1 = p * 2 * ch + ch/2;
-        var y2 = (p*2+1) * ch + ch/2;
-        var ym = (y1+y2)/2;
-        paths += '<path d="M0,'+y1+' L11,'+y1+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
-        paths += '<path d="M0,'+y2+' L11,'+y2+' L11,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
-        paths += '<path d="M11,'+ym+' L22,'+ym+'" fill="none" stroke="#DDD" stroke-width="1"/>';
-      }
-      wrap += '<div style="width:22px;flex-shrink:0;position:relative;height:'+totalH+'px;margin-top:27px;">';
-      wrap += '<svg style="position:absolute;top:0;left:0;" width="22" height="'+totalH+'" viewBox="0 0 22 '+totalH+'">'+paths+'</svg>';
-      wrap += '</div>';
-    }
-  });
+  // Octavos
+  wrap += colSimple(sOct, cardHOct, 'Octavos');
+  if (sQF.length)  { wrap += connectors(8, cardHOct, 27); wrap += colSimple(sQF, cardHQF, 'Cuartos'); }
+  if (sSF.length)  { wrap += connectors(4, cardHQF, 27);  wrap += colSimple(sSF, cardHSF, 'Semifinal'); }
+  if (sFin.length) { wrap += connectors(2, cardHSF, 27);  wrap += colSimple(sFin, cardHFin, 'Final'); }
 
   wrap += '</div></div>';
   wrap += '<div style="height:80px"></div>';
@@ -1051,11 +1106,11 @@ const FX = [
   {d:"Sáb 27/06",g:"J",h:"Argelia",a:"Austria",t:"00:00",s:"Kansas City",arg:false},
   {d:"Sáb 27/06",g:"J",h:"Jordania",a:"Argentina",t:"00:00",s:"Dallas",arg:true},
   {d:"Dom 28/06",r:"16avos",h:"Sudáfrica",a:"Canadá",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"Países Bajos",a:"Marruecos",t:"22:00",s:"Dallas",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"Alemania",a:"Paraguay",t:"17:30",s:"Monterrey",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"Francia",a:"Suecia",t:"18:00",s:"Seattle",arg:false},
   {d:"Lun 29/06",r:"16avos",h:"Brasil",a:"Japón",t:"14:00",s:"Houston",arg:false},
+  {d:"Lun 29/06",r:"16avos",h:"Alemania",a:"Paraguay",t:"17:30",s:"Monterrey",arg:false},
+  {d:"Lun 29/06",r:"16avos",h:"Países Bajos",a:"Marruecos",t:"22:00",s:"Dallas",arg:false},
   {d:"Mar 30/06",r:"16avos",h:"Costa de Marfil",a:"Noruega",t:"14:00",s:"Nueva Jersey",arg:false},
+  {d:"Mar 30/06",r:"16avos",h:"Francia",a:"Suecia",t:"18:00",s:"Seattle",arg:false},
   {d:"Mar 30/06",r:"16avos",h:"México",a:"Ecuador",t:"22:00",s:"Toronto",arg:false},
   {d:"Mié 01/07",r:"16avos",h:"Inglaterra",a:"RD Congo",t:"13:00",s:"Atlanta",arg:false},
   {d:"Mié 01/07",r:"16avos",h:"Bélgica",a:"Senegal",t:"17:00",s:"Seattle",arg:false},
