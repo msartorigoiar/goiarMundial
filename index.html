@@ -767,23 +767,20 @@ function bracketCardHTML(m, idx) {
 
   var html = '<div class="bracket-card'+(isTbd?' tbd':'')+(m.h==='Argentina'||m.a==='Argentina'?' bracket-arg':'')+'">';
 
-  // Header con badge de puntos
-  if (ptsBadge) {
-    html += '<div style="display:flex;justify-content:flex-end;margin-bottom:3px;">'+ptsBadge+'</div>';
-  }
-
-  // Fila local
+  // Fila local — badge de puntos integrado en la misma fila
   html += '<div class="bracket-row'+(homeWin?' winner':'')+'">';
   html += '<span class="bracket-team-name">'+teamFlag(m.h)+m.h+'</span>';
-  html += '<div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">';
+  html += '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">';
   html += '<span class="bracket-score">'+rH+'</span>';
   html += '<span style="font-size:10px;color:#B0A9A2;min-width:16px;text-align:right;">'+pH+'</span>';
+  if (ptsBadge) html += ptsBadge;
   html += '</div></div>';
 
   // Separador con etiquetas
-  html += '<div style="display:flex;justify-content:flex-end;gap:5px;padding:1px 0;">';
+  html += '<div style="display:flex;justify-content:flex-end;gap:4px;padding:1px 0;">';
   html += '<span style="font-size:8px;color:#CCC;min-width:16px;text-align:center;">Real</span>';
   html += '<span style="font-size:8px;color:#CCC;min-width:16px;text-align:right;">Pred</span>';
+  html += '<span style="font-size:8px;color:#CCC;min-width:20px;text-align:right;">Pts</span>';
   html += '</div>';
 
   // Fila visitante
