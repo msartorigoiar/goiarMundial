@@ -527,7 +527,7 @@ function getMatchDateTime(m) {
 
 function isLocked(m) {
   if (!m.d || !m.t) return false;
-  var lockTime = getMatchDateTime(m); // bloquear exactamente al inicio
+  var lockTime = new Date(getMatchDateTime(m).getTime() - 3600000); // bloquear 1h antes del inicio
   return Date.now() >= lockTime.getTime();
 }
 
@@ -981,19 +981,19 @@ const FX = [
   {d:"Sáb 27/06",g:"J",h:"Jordania",a:"Argentina",t:"00:00",s:"Dallas",arg:true},
   {d:"Dom 28/06",r:"16avos",h:"2° Grupo A",a:"2° Grupo B",t:"16:00",s:"Los Ángeles",arg:false},
   {d:"Lun 29/06",r:"16avos",h:"1° Grupo E",a:"2° Grupo F",t:"14:00",s:"Houston",arg:false},
-  {d:"Lun 29/06",r:"16avos",h:"1° Grupo F",a:"2° Grupo C",t:"22:00",s:"Monterrey",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"2° Grupo E",a:"2° Grupo I",t:"14:00",s:"Dallas",arg:false},
-  {d:"Mar 30/06",r:"16avos",h:"1° Grupo I",a:"3° mejor",t:"18:00",s:"Nueva Jersey",arg:false},
-  {d:"Mié 01/07",r:"16avos",h:"1° Grupo C",a:"2° Grupo D",t:"16:00",s:"Seattle",arg:false},
-  {d:"Mié 01/07",r:"16avos",h:"1° Grupo D",a:"3° mejor",t:"20:00",s:"Toronto",arg:false},
-  {d:"Jue 02/07",r:"16avos",h:"1° Grupo G",a:"2° Grupo H",t:"16:00",s:"Atlanta",arg:false},
-  {d:"Jue 02/07",r:"16avos",h:"1° Grupo H",a:"3° mejor",t:"20:00",s:"Miami",arg:false},
-  {d:"Vie 03/07",r:"16avos",h:"1° Grupo J",a:"2° Grupo K",t:"16:00",s:"Los Ángeles",arg:false},
-  {d:"Vie 03/07",r:"16avos",h:"1° Grupo K",a:"3° mejor",t:"20:00",s:"Vancouver",arg:false},
-  {d:"Sáb 04/07",r:"16avos",h:"2° Grupo G",a:"2° Grupo L",t:"16:00",s:"Houston",arg:false},
-  {d:"Sáb 04/07",r:"16avos",h:"1° Grupo L",a:"2° Grupo J",t:"20:00",s:"Dallas",arg:false},
-  {d:"Dom 05/07",r:"16avos",h:"1° Grupo B",a:"3° mejor",t:"16:00",s:"Seattle",arg:false},
-  {d:"Dom 05/07",r:"16avos",h:"1° Grupo A",a:"2° Grupo C",t:"20:00",s:"Toronto",arg:false},
+  {d:"Lun 29/06",r:"16avos",h:"1° Grupo F",a:"2° Grupo C",t:"17:30",s:"Monterrey",arg:false},
+  {d:"Lun 29/06",r:"16avos",h:"2° Grupo E",a:"2° Grupo I",t:"22:00",s:"Dallas",arg:false},
+  {d:"Mar 30/06",r:"16avos",h:"1° Grupo I",a:"3° mejor",t:"14:00",s:"Nueva Jersey",arg:false},
+  {d:"Mié 01/07",r:"16avos",h:"1° Grupo C",a:"2° Grupo D",t:"18:00",s:"Seattle",arg:false},
+  {d:"Mar 30/06",r:"16avos",h:"1° Grupo D",a:"3° mejor",t:"22:00",s:"Toronto",arg:false},
+  {d:"Mié 01/07",r:"16avos",h:"1° Grupo G",a:"2° Grupo H",t:"13:00",s:"Atlanta",arg:false},
+  {d:"Mié 01/07",r:"16avos",h:"1° Grupo H",a:"3° mejor",t:"17:00",s:"Seattle",arg:false},
+  {d:"Jue 02/07",r:"16avos",h:"1° Grupo J",a:"2° Grupo K",t:"16:00",s:"Los Ángeles",arg:false},
+  {d:"Jue 02/07",r:"16avos",h:"1° Grupo K",a:"3° mejor",t:"20:00",s:"Toronto",arg:false},
+  {d:"Vie 03/07",r:"16avos",h:"2° Grupo G",a:"2° Grupo L",t:"00:00",s:"Houston",arg:false},
+  {d:"Vie 03/07",r:"16avos",h:"1° Grupo L",a:"2° Grupo J",t:"15:00",s:"Dallas",arg:false},
+  {d:"Vie 03/07",r:"16avos",h:"1° Grupo B",a:"3° mejor",t:"19:00",s:"Miami",arg:false},
+  {d:"Vie 03/07",r:"16avos",h:"1° Grupo A",a:"2° Grupo C",t:"22:30",s:"Kansas City",arg:false},
   {d:"Lun 07/07",r:"Octavos",h:"Gan. P73",a:"Gan. P74",t:"14:00",s:"Los Ángeles",arg:false},
   {d:"Lun 07/07",r:"Octavos",h:"Gan. P75",a:"Gan. P76",t:"18:00",s:"Philadelphia",arg:false},
   {d:"Mar 08/07",r:"Octavos",h:"Gan. P77",a:"Gan. P78",t:"14:00",s:"Dallas",arg:false},
