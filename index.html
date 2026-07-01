@@ -481,17 +481,26 @@ function goTriviaTab(tab) {
 function doSave() {
   saveLocal();
   var el = document.getElementById('saveOk');
+  el.style.color = '#888';
   el.textContent = 'Guardando...';
   var payload = encodeURIComponent(JSON.stringify({usuario: uName, predicciones: preds}));
   fetch(SCRIPT_URL + '?action=save&data=' + payload, {method:'GET', redirect:'follow'})
     .then(function(r) { return r.json(); })
-    .then(function(data) {
-      el.textContent = data.ok ? '✓ Guardado (' + data.guardadas + ' partidos)' : '⚠️ ' + data.error;
-      setTimeout(function() { el.textContent = ''; }, 3000);
+    .then(function(resp) {
+      if (resp.ok) {
+        var total = (resp.actualizadas || 0) + (resp.insertadas || 0);
+        el.style.color = '#3D8B3D';
+        el.textContent = '\u2713 Guardado (' + total + ' predicciones)';
+      } else {
+        el.style.color = '#C73D24';
+        el.textContent = '\u26a0 Error: ' + (resp.error || 'Respuesta inválida');
+      }
+      setTimeout(function() { el.textContent = ''; }, 3500);
     })
     .catch(function() {
-      el.textContent = '✓ Guardado local';
-      setTimeout(function() { el.textContent = ''; }, 3000);
+      el.style.color = '#C73D24';
+      el.textContent = '\u26a0 Sin conexión — guardado solo localmente. Intentá de nuevo.';
+      setTimeout(function() { el.textContent = ''; }, 5000);
     });
 }
 
