@@ -276,6 +276,8 @@ var uName = '';
 var preds = {};
 var resultados = {}; // {partido_id: {gl, gv}}
 var currentFilter = 'todos'; // 'finalizados' | 'hoy' | 'proximos' | 'todos'
+var APP_VERSION = 'v2026.07.01-a';
+console.log('Prode Goiar — versión ' + APP_VERSION);
 
 function setPred(i, f, v) {
   if (!preds['m'+i]) preds['m'+i] = {};
@@ -306,7 +308,7 @@ function loadResultados(callback) {
       loadFixtureNames(callback);
     })
     .catch(function() {
-      resultados = {};
+      // NO resetear resultados si falla — mantener los que ya había
       if (callback) callback();
     });
 }
@@ -972,9 +974,7 @@ function toggleStage(stageKey) {
 }
 
 function calcTotalPuntos() {
-  // Usar puntos del servidor si están disponibles (más confiables)
-  if (window._serverPuntos !== undefined) return window._serverPuntos;
-  // Fallback: calcular localmente
+  // Siempre calcular localmente — misma fuente de verdad en Todos y Ranking
   var total = 0;
   FX.forEach(function(m, i) {
     var p = preds['m'+i];
@@ -1040,11 +1040,11 @@ function buildRank() {
   var el = document.getElementById('rankContent');
   el.innerHTML = '<div style="padding:28px;text-align:center;color:#B0A9A2;font-family:var(--font-condensed);font-size:14px;">Cargando ranking...</div>';
 
-  // Cargar resultados primero para tener calcTotalPuntos actualizado
-  loadResultados(function() {
-    var misPuntos = calcTotalPuntos(); // misma sumatoria que "Todos los partidos"
+  // Calcular puntos localmente — misma lógica que "Todos los partidos"
+  // No necesitamos recargar resultados: ya están en memoria desde la última carga
+  var misPuntos = calcTotalPuntos();
 
-    fetch(SCRIPT_URL + '?action=ranking')
+  fetch(SCRIPT_URL + '?action=ranking')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var ranking = data.ranking || [];
@@ -1080,49 +1080,7 @@ function buildRank() {
       .catch(function() {
         el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>';
       });
-  });
 }
 
 
-function _buildRankWithData(el) {
-  // Calcular puntos localmente — misma lógica que "Todos los partidos"
-  var misPuntos = calcTotalPuntos();
-  window._serverPuntos = misPuntos;
-
-  fetch(SCRIPT_URL + '?action=ranking')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var ranking = data.ranking || [];
-      var total   = data.total || FX.length;
-      var medals  = ['🥇','🥈','🥉'];
-
-      // Para el usuario logueado, reemplazar puntos del servidor con los calculados localmente
-      ranking = ranking.map(function(u) {
-        if (u.usuario === uName) {
-          return Object.assign({}, u, {puntos: misPuntos});
-        }
-        return u;
-      });
-
-      // Re-ordenar por puntos actualizados
-      ranking.sort(function(a, b) {
-        return b.puntos - a.puntos || b.predicciones - a.predicciones;
-      });
-
-      var h = '<div class="rank-wrap"><div class="rank-head"><div class="rh-pos">#</div><div class="rh-name">Participante</div><div class="rh-prog">Avance</div><div class="rh-pts">Pts</div></div>';
-      ranking.forEach(function(u, i) {
-        var pct = Math.round((u.predicciones / total) * 100);
-        var me  = u.usuario === uName;
-        h += '<div class="rank-row'+(me?' me':'')+'">';
-        h += '<div class="rk-pos">'+(medals[i]||i+1)+'</div>';
-        h += '<div class="rk-name"><strong>'+u.usuario+(me?' <span style="color:var(--color-primary);font-size:11px">(vos)</span>':'')+'</strong><span>'+u.predicciones+'/'+total+' partidos</span></div>';
-        h += '<div class="rk-prog"><div style="font-size:11px;color:#B0A9A2;font-family:var(--font-condensed);font-weight:700">'+pct+'%</div><div class="prog-bg"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';
-        h += '<div class="rk-pts"><strong>'+u.puntos+'</strong><span>puntos</span></div>';
-        h += '</div>';
-      });
-      h += '</div>';
-      el.innerHTML = h;
-    })
-    .catch(function() { el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>'; });
-}
 >
