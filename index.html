@@ -318,21 +318,43 @@ function loadFixtureNames(callback) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var fixtureSheet = data.fixture || [];
-      // Actualizar nombres en FX donde la sheet tenga nombres reales (no genéricos)
+
+      // Construir mapa pid → índice en FX buscando por pid explícito
+      // No asumir idx = pid-1 porque el orden de octavos en FX puede diferir de la sheet
+      var pidToFxIdx = {};
+      FX.forEach(function(m, i) {
+        // El pid de cada partido es su posición 1-indexed en el FX ORIGINAL (antes de reordenamientos)
+        // Para partidos de grupos (sin r), el idx+1 coincide con la sheet
+        // Para eliminatorios, buscamos por coincidencia de equipos o usamos un mapa fijo
+        pidToFxIdx[i + 1] = i; // mapa por defecto: pid = idx+1
+      });
+
+      // Mapa explícito para octavos (sheet id → FX idx)
+      // Necesario porque reordenamos los octavos en FX para el bracket visual
+      var sheetIdToFxIdx = {
+        89: 88, 90: 89, 91: 90, 92: 91,
+        93: 92, 94: 93, 95: 94, 96: 95
+      };
+
+      var isGeneric = function(n) {
+        return !n || n.indexOf('°') !== -1 || n.indexOf('Gan') !== -1 || n.indexOf('Per') !== -1;
+      };
+
       fixtureSheet.forEach(function(row) {
         var pid = parseInt(row.id);
-        if (isNaN(pid) || pid < 73) return; // solo fase eliminatoria
-        var idx = pid - 1; // FX es 0-indexed
-        if (idx < 0 || idx >= FX.length) return;
-        var local = row.local || row['local'] || '';
-        var visitante = row.visitante || row['visitante'] || '';
-        // Solo actualizar si el nombre de la sheet no es genérico
-        var isGeneric = function(n) {
-          return n.indexOf('°') !== -1 || n.indexOf('Gan') !== -1 || n.indexOf('Per') !== -1;
-        };
-        if (local && !isGeneric(local))     FX[idx].h = local;
-        if (visitante && !isGeneric(visitante)) FX[idx].a = visitante;
+        if (isNaN(pid) || pid < 73) return;
+        var local    = row.local    || '';
+        var visitante = row.visitante || '';
+        if (isGeneric(local) && isGeneric(visitante)) return;
+
+        // Obtener el índice correcto en FX
+        var fxIdx = (sheetIdToFxIdx[pid] !== undefined) ? sheetIdToFxIdx[pid] : (pid - 1);
+        if (fxIdx < 0 || fxIdx >= FX.length) return;
+
+        if (!isGeneric(local))     FX[fxIdx].h = local;
+        if (!isGeneric(visitante)) FX[fxIdx].a = visitante;
       });
+
       if (callback) callback();
     })
     .catch(function() {
