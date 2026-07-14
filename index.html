@@ -74,7 +74,7 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 .arg-tag{background:var(--color-primary);color:var(--color-white);font-size:10px;font-weight:700;font-family:var(--font-condensed);letter-spacing:1.5px;text-transform:uppercase;padding:2px 9px;border-radius:99px}
 .match{background:var(--color-white);border:1.5px solid var(--color-border);border-radius:var(--radius-md);padding:12px 15px;margin-bottom:7px;transition:border-color .15s}
 .match:hover{border-color:#D9D2C9}
-.match.arg{border-color:var(--color-primary);border-width:2px}
+.match.arg{border-color:var(--color-primary);border-width:2px;animation:argHighlight 1.3s ease-in-out infinite}@keyframes argHighlight{0%,100%{box-shadow:0 0 0 0 rgba(233,84,54,.55);background:var(--color-white)}50%{box-shadow:0 0 14px 3px rgba(233,84,54,.35);background:#FFF6F4}}
 .match-locked{opacity:.7}
 .filter-chips{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .filter-chip{padding:8px 16px;border-radius:99px;border:1.5px solid var(--color-border);background:var(--color-white);font-family:var(--font-condensed);font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888;cursor:pointer;transition:all .15s}
@@ -1112,8 +1112,11 @@ function getStageKey(m) {
 }
 
 function initStageCollapsed() {
-  // Todas las fases desplegadas por defecto
-  STAGE_ORDER.forEach(function(s) { if (stageCollapsed[s] === undefined) stageCollapsed[s] = false; });
+  // Expandidas por defecto solo Semifinal, Tercer Puesto y Final; el resto arranca compactado
+  var EXPANDED_BY_DEFAULT = {'Semifinal':true, '3° Puesto':true, 'FINAL':true};
+  STAGE_ORDER.forEach(function(s) {
+    if (stageCollapsed[s] === undefined) stageCollapsed[s] = !EXPANDED_BY_DEFAULT[s];
+  });
 }
 
 function toggleStage(stageKey) {
