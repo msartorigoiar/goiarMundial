@@ -45,6 +45,8 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 .ns-badge{display:inline-flex;align-items:center;gap:6px;background:var(--color-primary);color:var(--color-white);font-family:var(--font-condensed);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 13px;border-radius:99px;margin-bottom:16px}
 .ns-dot{width:6px;height:6px;background:var(--color-white);border-radius:50%;animation:blink 1.2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pulseGlow{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.8;transform:scale(1.05)}}
+
 .ns-title{font-family:var(--font-display);font-size:44px;letter-spacing:1px;color:var(--color-text);line-height:.95;margin-bottom:14px;text-align:center}
 .ns-title span{color:var(--color-primary)}
 .ns-steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
@@ -183,10 +185,6 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
     <div class="hero-text">
       <div class="hero-title">PRODE<br><span>MUNDIAL</span><br>2026</div>
       <div class="hero-sub">11 Jun – 19 Jul</div>
-      <div class="hero-chips">
-        <div class="chip">48 selecciones</div>
-        <div class="chip red">Argentina Grupo J</div>
-      </div>
     </div>
   </div>
 </div>
@@ -194,8 +192,8 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 <!-- NAME SCREEN -->
 <div id="nameScreen">
   <div class="name-screen-wrap">
-    <div class="ns-badge"><div class="ns-dot"></div>¡Ya arrancó el Mundial!</div>
-    <div class="ns-title">¡Unite al <span>Prode!</span></div>
+    <div class="ns-badge"><div class="ns-dot"></div>¡Vamos Argentina! 🇦🇷</div>
+    <div class="ns-title">¡Estamos en <span>SEMIFINALES</span>!!</div>
     <div class="ns-steps">
       <div class="ns-step"><div class="ns-step-icon">⚽</div><div class="ns-step-text"><strong>Predecí resultados</strong><span>104 partidos hasta la final</span></div></div>
       <div class="ns-step"><div class="ns-step-icon">📈</div><div class="ns-step-text"><strong>Sumá puntos</strong><span>3 exacto · 1 ganador</span></div></div>
@@ -1220,6 +1218,10 @@ function buildRank() {
         el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>';
       });
 }
+
+// Mostrar el proximo partido de Argentina en la pantalla de login,
+// sin esperar a que el usuario inicie sesion.
+loadResultados(function() { renderNextArgMatch(); });
 </script>
 </body>
 </html>
