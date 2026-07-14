@@ -350,7 +350,15 @@ function loadFixtureNames(callback) {
         if (isGeneric(local) && isGeneric(visitante)) return;
 
         // Obtener el índice correcto en FX
-        var fxIdx = (sheetIdToFxIdx[pid] !== undefined) ? sheetIdToFxIdx[pid] : (pid - 1);
+        var fxIdx;
+        if (sheetIdToFxIdx[pid] !== undefined) {
+          fxIdx = sheetIdToFxIdx[pid]; // Octavos: mapeo verificado
+        } else if (pid >= 73 && pid <= 88) {
+          fxIdx = pid - 1; // 16avos: mapeo por defecto verificado
+        } else {
+          return; // Cuartos/Semifinal/3er puesto/Final: nombres reales ya cargados a mano en FX,
+                  // no sobreescribir con la sheet hasta confirmar el mapeo real (evita corromper nombres)
+        }
         if (fxIdx < 0 || fxIdx >= FX.length) return;
 
         if (!isGeneric(local))     FX[fxIdx].h = local;
