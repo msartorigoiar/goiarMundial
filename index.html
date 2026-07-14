@@ -222,7 +222,10 @@ body{background:var(--color-bg);font-family:var(--font-body);color:var(--color-t
 
     <!-- Próximo partido de Argentina (dinámico) -->
     <div id="nextArgMatch" style="margin-top:20px;background:var(--color-white);border:1.5px solid var(--color-border);border-radius:var(--radius-lg);padding:12px 16px;text-align:center;">
-      <div style="font-family:var(--font-condensed);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#B0A9A2;">Cargando próximo partido de Argentina...</div>
+      <div style="font-family:var(--font-condensed);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#B0A9A2;margin-bottom:10px;">🇦🇷 Próximo partido — SEMIFINAL!</div>
+      <div style="font-family:var(--font-condensed);font-size:15px;font-weight:700;color:var(--color-text);">Argentina vs Inglaterra</div>
+      <div style="font-family:var(--font-display);font-size:22px;color:var(--color-primary);margin-top:4px;">16:00</div>
+      <div style="font-family:var(--font-condensed);font-size:11px;color:#B0A9A2;text-transform:uppercase;margin-top:2px;">Mié 15/07 · Atlanta</div>
     </div>
   </div>
 </div>
@@ -1218,10 +1221,6 @@ function buildRank() {
         el.innerHTML = '<div style="padding:24px;text-align:center;color:#E95436;font-family:var(--font-condensed)">Error al cargar ranking</div>';
       });
 }
-
-// Mostrar el proximo partido de Argentina en la pantalla de login,
-// sin esperar a que el usuario inicie sesion.
-loadResultados(function() { renderNextArgMatch(); });
 </script>
 </body>
 </html>
