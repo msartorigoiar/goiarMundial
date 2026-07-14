@@ -332,6 +332,7 @@ function loadFixtureNames(callback) {
       // Mapa explícito para octavos (sheet id → FX idx)
       // Necesario porque reordenamos los octavos en FX para el bracket visual
       var sheetIdToFxIdx = {
+        // FX en orden sheet: id = idx+1 (identidad)
         89: 88, 90: 89, 91: 90, 92: 91,
         93: 92, 94: 93, 95: 94, 96: 95
       };
@@ -628,14 +629,14 @@ const FX = [
   {d:"Lun 06/07",r:"Octavos",h:"Portugal",a:"España",t:"16:00",s:"Dallas",arg:false},
   {d:"Mar 07/07",r:"Octavos",h:"Suiza",a:"Colombia",t:"16:00",s:"Vancouver",arg:false},
   {d:"Mar 07/07",r:"Octavos",h:"Argentina",a:"Egipto",t:"13:00",s:"Atlanta",arg:true},
-  {d:"Sáb 11/07",r:"Cuartos",h:"Gan. P90",a:"Gan. P91",t:"14:00",s:"Los Ángeles",arg:false},
-  {d:"Sáb 11/07",r:"Cuartos",h:"Gan. P92",a:"Gan. P93",t:"18:00",s:"Philadelphia",arg:false},
-  {d:"Dom 12/07",r:"Cuartos",h:"Gan. P94",a:"Gan. P95",t:"14:00",s:"Dallas",arg:false},
-  {d:"Dom 12/07",r:"Cuartos",h:"Gan. P96",a:"Gan. P97",t:"18:00",s:"Miami",arg:false},
-  {d:"Mar 14/07",r:"Semifinal",h:"Gan. SF1",a:"Gan. SF2",t:"21:00",s:"Dallas",arg:false},
-  {d:"Mié 15/07",r:"Semifinal",h:"Gan. SF3",a:"Gan. SF4",t:"21:00",s:"Atlanta",arg:false},
-  {d:"Sáb 18/07",r:"3° Puesto",h:"Per. SF1",a:"Per. SF2",t:"14:00",s:"Miami",arg:false},
-  {d:"Dom 19/07",r:"FINAL",h:"Gan. SF1",a:"Gan. SF2",t:"17:00",s:"Nueva Jersey",arg:false}
+  {d:"Vie 10/07",r:"Cuartos",h:"Francia",a:"Marruecos",t:"14:00",s:"Los Ángeles",arg:false},
+  {d:"Vie 10/07",r:"Cuartos",h:"España",a:"Bélgica",t:"18:00",s:"Philadelphia",arg:false},
+  {d:"Sáb 11/07",r:"Cuartos",h:"Noruega",a:"Inglaterra",t:"14:00",s:"Miami",arg:false},
+  {d:"Sáb 11/07",r:"Cuartos",h:"Argentina",a:"Suiza",t:"18:00",s:"Dallas",arg:true},
+  {d:"Mar 14/07",r:"Semifinal",h:"Francia",a:"España",t:"16:00",s:"Dallas",arg:false},
+  {d:"Mié 15/07",r:"Semifinal",h:"Inglaterra",a:"Argentina",t:"16:00",s:"Atlanta",arg:true},
+  {d:"Sáb 18/07",r:"3° Puesto",h:"Per. SF1",a:"Per. SF2",t:"18:00",s:"Miami",arg:false},
+  {d:"Dom 19/07",r:"FINAL",h:"Gan. SF1",a:"Gan. SF2",t:"16:00",s:"Nueva Jersey",arg:false}
 ];
 
 var DAY_OFFSETS = {
@@ -957,6 +958,15 @@ function buildBracketTab() {
   var sSF  = getStage('Semifinal'); // 2 partidos
   var sFin = getStage('FINAL');     // 1 partido
 
+  // Orden VISUAL de octavos para que los conectores del bracket sean correctos.
+  // El FX mantiene el orden de la sheet (crítico para resultados/predicciones);
+  // acá solo reordenamos la presentación:
+  // visual: Can-Mar, Par-Fra, EEUU-Bel, Por-Esp, Bra-Nor, Ecu-Ing, Sui-Col, Arg-Egi
+  var octVisualOrder = [0, 1, 4, 5, 2, 3, 6, 7];
+  if (sOct.length === 8) {
+    sOct = octVisualOrder.map(function(vi) { return sOct[vi]; });
+  }
+
   // Pares de 16avos que van al mismo octavo (índice dentro de s16[])
   // Definidos explícitamente según el bracket oficial
   // Canadá vs Marruecos ← gan(P73 Sud-Can) + gan(P76 PB-Mar)
@@ -967,7 +977,7 @@ function buildBracketTab() {
   // s16[4]=CdM-Nor, s16[5]=Fra-Sue, s16[6]=Mex-Ecu, s16[7]=Ing-RDC
   // s16[8]=Bel-Sen, s16[9]=EEUU-Bos, s16[10]=Esp-Aut, s16[11]=Por-Cro
   // s16[12]=Sui-Arg, s16[13]=Aus-Egi, s16[14]=Arg-CV, s16[15]=Col-Gha
-  var pairs16 = [[0,3],[2,5],[1,4],[6,7],[8,9],[10,11],[12,13],[14,15]];
+  var pairs16 = [[0,3],[2,5],[8,9],[10,11],[1,4],[6,7],[12,13],[14,15]];
   // → Par1: Sud-Can+PB-Mar, Par2: Ale-Par+Fra-Sue, Par3: Bra-Jap+CdM-Nor
   // → Par4: Mex-Ecu+Ing-RDC, Par5: Bel-Sen+EEUU-Bos, Par6: Esp-Aut+Por-Cro
   // → Par7: Sui-Arg+Aus-Egi, Par8: Arg-CV+Col-Gha
