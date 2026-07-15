@@ -277,6 +277,7 @@ var uName = '';
 var preds = {};
 var resultados = {}; // {partido_id: {gl, gv}}
 var currentFilter = 'todos'; // 'finalizados' | 'hoy' | 'proximos' | 'todos'
+var misPuntosReales = null; // puntos reales del usuario, calculados por el servidor (null = aun no confirmado)
 var APP_VERSION = 'v2026.07.01-a';
 console.log('Prode Goiar — versión ' + APP_VERSION);
 
@@ -385,6 +386,27 @@ function calcPuntos(i, ph, pa) {
 }
 
 // ============================================================
+//  MIS PUNTOS REALES — misma fuente de verdad que el Ranking
+//  (evita depender solo de localStorage, que puede estar vacío/
+//  desactualizado en otro navegador o dispositivo)
+// ============================================================
+function loadMisPuntos(callback) {
+  if (!uName) { if (callback) callback(); return; }
+  fetch(SCRIPT_URL + '?action=ranking', {method:'GET', redirect:'follow'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var lista = data.ranking || [];
+      var mio = lista.filter(function(u) { return u.usuario === uName; })[0];
+      misPuntosReales = mio ? mio.puntos : 0;
+      if (callback) callback();
+    })
+    .catch(function() {
+      misPuntosReales = null; // sin conexión: usar fallback local
+      if (callback) callback();
+    });
+}
+
+// ============================================================
 //  GOOGLE LOGIN via GIS token
 // ============================================================
 var GIS_CLIENT_ID = '77657763608-bck1gkl4pvpucb3gq0v225n63einda7g.apps.googleusercontent.com';
@@ -444,10 +466,12 @@ function onLoginSuccess(name) {
   document.getElementById('uLabel').textContent = uName;
   document.getElementById('nameScreen').style.display = 'none';
   document.getElementById('mainApp').classList.remove('section-hidden');
-  // Cargar resultados reales primero, luego renderizar
+  // Cargar resultados reales y mis puntos reales primero, luego renderizar
   loadResultados(function() {
-    buildArgTab();
-    buildAllTab();
+    loadMisPuntos(function() {
+      buildArgTab();
+      buildAllTab();
+    });
   });
 }
 
@@ -470,8 +494,10 @@ function doSignOut() {
           document.getElementById('nameScreen').style.display = 'none';
           document.getElementById('mainApp').classList.remove('section-hidden');
           loadResultados(function() {
-            buildArgTab();
-            buildAllTab();
+            loadMisPuntos(function() {
+              buildArgTab();
+              buildAllTab();
+            });
           });
           break;
         }
@@ -497,7 +523,7 @@ function goTab(tab) {
   });
   if (tab === 'rank')    buildRank();
   if (tab === 'arg')     { loadResultados(function(){ buildArgTab(); }); }
-  if (tab === 'all')     { loadResultados(function(){ buildAllTab(); }); }
+  if (tab === 'all')     { loadResultados(function(){ loadMisPuntos(function(){ buildAllTab(); }); }); }
   if (tab === 'bracket') { loadResultados(function(){ buildBracketTab(); }); }
 }
 
@@ -1125,7 +1151,10 @@ function toggleStage(stageKey) {
 }
 
 function calcTotalPuntos() {
-  // Siempre calcular localmente — misma fuente de verdad en Todos y Ranking
+  // Fuente de verdad: el ranking calculado por el servidor (suma real de
+  // resultados de cada partido contra las predicciones guardadas).
+  if (misPuntosReales !== null) return misPuntosReales;
+  // Fallback local (sin conexión o antes de confirmar contra el servidor)
   var total = 0;
   FX.forEach(function(m, i) {
     var p = preds['m'+i];
